@@ -12,7 +12,9 @@ config.use_fancy_tab_bar = false
 config.max_fps = 120
 config.prefer_egl = true
 
-if wezterm.target_triple == 'x84_64-pc-windows-msvc' then
+print("wezterm.target_triple: " .. wezterm.target_triple)
+
+if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
     config.default_prog = { 'powershell.exe', '-NoLogo' }
 elseif wezterm.target_triple == 'x86_64-unknown-linux-gnu' then
     config.default_prog = { '/usr/bin/bash', '--login' }
