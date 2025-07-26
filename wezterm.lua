@@ -21,7 +21,7 @@ end
 config.tab_max_width = 24
 
 config.window_padding = { left = 5, right = 5, top = 10, bottom = 0 }
-config.inactive_pane_hsb = { saturation = 0.25, brightness = 0.6 }
+config.inactive_pane_hsb = { saturation = 0.75, brightness = 0.7 }
 
 -- Keybinds
 config.keys = {
@@ -66,6 +66,7 @@ config.keys = {
 }
 
 wezterm.on("format-tab-title", function(tab, tabs, panes, conf, hover, max_width)
+	-- TODO: Update tab color when WezTerm is not in focus
 	local function tab_title(tab_info)
 		local title = tab_info.tab_title
 
