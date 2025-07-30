@@ -25,6 +25,13 @@ config.tab_max_width = 24
 config.window_padding = { left = 5, right = 5, top = 10, bottom = 0 }
 config.inactive_pane_hsb = { saturation = 0.75, brightness = 0.7 }
 
+-- Startup
+wezterm.on('gui-startup', function(window)
+  local tab, pane, window = wezterm.mux.spawn_window(cmd or {})
+  local gui_window = window:gui_window();
+  gui_window:perform_action(wezterm.action.ToggleFullScreen, pane)
+end)
+
 -- Keybinds
 config.keys = {
     { key = 't', mods = 'ALT', action = wezterm.action.SpawnTab 'CurrentPaneDomain' },
