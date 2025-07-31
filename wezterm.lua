@@ -29,7 +29,7 @@ config.inactive_pane_hsb = { saturation = 0.75, brightness = 0.7 }
 wezterm.on('gui-startup', function(window)
   local tab, pane, window = wezterm.mux.spawn_window(cmd or {})
   local gui_window = window:gui_window();
-  gui_window:perform_action(wezterm.action.ToggleFullScreen, pane)
+  gui_window:maximize()
 end)
 
 -- Keybinds
