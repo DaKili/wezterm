@@ -15,9 +15,20 @@ config.window_padding = { left = 5, right = 5, top = 10, bottom = 0 }
 config.use_fancy_tab_bar = false
 config.tab_max_width = 24
 config.inactive_pane_hsb = { saturation = 0.75, brightness = 0.7 }
+
 -- Handle shell application to start
 if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
-    config.default_prog = { 'powershell.exe', '-NoLogo' }
+    -- Check if PowerShell 7+ is installed, otherwise fallback to Windows PowerShell
+    local pwsh_path = 'C:\\Program Files\\PowerShell\\7\\pwsh.exe'
+    local success, result = pcall(function()
+        return wezterm.run_child_process({ pwsh_path, '-NoLogo', '-Command', 'exit' })
+    end)
+    
+    if success and result then
+        config.default_prog = { pwsh_path, '-NoLogo' }
+    else
+        config.default_prog = { 'powershell.exe', '-NoLogo' }
+    end
 elseif wezterm.target_triple == 'x86_64-unknown-linux-gnu' then
     config.default_prog = { '/usr/bin/bash', '--login' }
 end
