@@ -42,7 +42,6 @@ end)
 
 -- Keybinds
 config.keys = {
-    { key = 't', mods = 'ALT', action = wezterm.action.SpawnTab('CurrentPaneDomain') },
     { key = 'm', mods = 'ALT', action = wezterm.action.TogglePaneZoomState },
     { key = '.', mods = 'ALT', action = wezterm.action.ActivateTabRelative(1) },
     { key = ',', mods = 'ALT', action = wezterm.action.ActivateTabRelative(-1) },
@@ -55,6 +54,7 @@ config.keys = {
     { key = 'k', mods = 'ALT', action = wezterm.action.ActivatePaneDirection('Up') },
     { key = 'j', mods = 'ALT', action = wezterm.action.ActivatePaneDirection('Down') },
     { key = 'f', mods = 'ALT', action = wezterm.action.ShowLauncherArgs({ flags = 'FUZZY|WORKSPACES' }) },
+    { key = 't', mods = 'ALT|SHIFT', action = wezterm.action.SpawnTab('CurrentPaneDomain') },
     { key = 'h', mods = 'ALT|SHIFT', action = wezterm.action.MoveTabRelative(-1) },
     { key = 'l', mods = 'ALT|SHIFT', action = wezterm.action.MoveTabRelative(1) },
 
