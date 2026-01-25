@@ -23,7 +23,7 @@ if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
     local success, result = pcall(function()
         return wezterm.run_child_process({ pwsh_path, '-NoLogo', '-Command', 'exit' })
     end)
-    
+
     if success and result then
         config.default_prog = { pwsh_path, '-NoLogo' }
     else
