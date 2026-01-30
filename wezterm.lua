@@ -13,7 +13,7 @@ config.color_scheme = 'Oxocarbon Dark'
 config.window_decorations = 'RESIZE|INTEGRATED_BUTTONS'
 config.window_padding = { left = 5, right = 5, top = 10, bottom = 0 }
 config.use_fancy_tab_bar = false
-config.tab_max_width = 24
+config.tab_max_width = 30
 config.inactive_pane_hsb = { saturation = 0.75, brightness = 0.7 }
 
 -- Handle shell application to start
@@ -23,7 +23,7 @@ if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
     local success, result = pcall(function()
         return wezterm.run_child_process({ pwsh_path, '-NoLogo', '-Command', 'exit' })
     end)
-    
+
     if success and result then
         config.default_prog = { pwsh_path, '-NoLogo' }
     else
@@ -42,7 +42,7 @@ end)
 
 -- Keybinds
 config.keys = {
-    { key = 't', mods = 'ALT', action = wezterm.action.SpawnTab('CurrentPaneDomain') },
+    { key = 't', mods = 'ALT|SHIFT', action = wezterm.action.SpawnTab('CurrentPaneDomain') },
     { key = 'm', mods = 'ALT', action = wezterm.action.TogglePaneZoomState },
     { key = '.', mods = 'ALT', action = wezterm.action.ActivateTabRelative(1) },
     { key = ',', mods = 'ALT', action = wezterm.action.ActivateTabRelative(-1) },
@@ -82,49 +82,94 @@ config.keys = {
 
     -- Disable Keybinds
     { key = 'N', mods = 'CTRL', action = wezterm.action.DisableDefaultAssignment },
+    {
+        key = 'p',
+        mods = 'ALT',
+        action = wezterm.action_callback(function(window, pane)
+            project_layouts.vf8(window, pane)
+        end),
+    },
+}
+
+local function is_app_title(title)
+    return #title > 0 and not title:find('^%a:\\')
+end
+
+local function get_cwd_basename(pane)
+    local cwd_url = pane.current_working_dir
+    if not cwd_url then
+        return nil
+    end
+
+    local cwd = cwd_url.file_path or tostring(cwd_url)
+    cwd = cwd:gsub('[/\\]+$', '')
+    local basename = cwd:match('[/\\]([^/\\]+)$') or cwd
+    if basename and #basename > 0 then
+        return basename
+    end
+    return nil
+end
+
+local function has_claude(tab_info)
+    for _, pane_info in ipairs(tab_info.panes) do
+        if ((pane_info.title or ''):lower()):find('claude') then
+            return true
+        end
+    end
+    return false
+end
+
+local function resolve_tab_title(tab_info)
+    -- prefer explicit title
+    local explicit = tab_info.tab_title
+    if explicit and #explicit > 0 then
+        return explicit, true
+    end
+
+    -- then app title
+    local pane_title = tab_info.active_pane.title or ''
+    if is_app_title(pane_title) and not pane_title:lower():find('claude') then
+        return pane_title, false
+    end
+
+    -- then cwd basename
+    return get_cwd_basename(tab_info.active_pane) or pane_title, false
+end
+
+local function pad_title(title, max_w)
+    if #title > max_w then
+        return wezterm.truncate_right(title, max_w - 2)
+    end
+    local padding = math.floor((max_w - #title) / 2)
+    return string.rep(' ', padding) .. title .. string.rep(' ', max_w - #title - padding)
+end
+
+local tab_colors = {
+    fg_active = '#78a9ff',
+    bg_active = '#161616',
+    fg_inactive = '#d0d0d0',
+    bg_inactive = '#262626',
+    idx_active = '#78a9ff',
+    idx_inactive = '#705d99',
 }
 
 wezterm.on('format-tab-title', function(tab, tabs, panes, conf, hover, max_width)
-    -- TODO: Update tab color when WezTerm is not in focus
-    local function tab_title(tab_info)
-        local title = tab_info.tab_title
+    local title, is_explicit = resolve_tab_title(tab)
 
-        if title and #title > 0 then -- If the tab title is explicitly set, use it
-            return title
-        end
-
-        return tab_info.active_pane.title -- Otherwise, use the title from the active pane in the tab
+    if not is_explicit and has_claude(tab) then
+        title = 'C - ' .. title
     end
 
-    local function pad_title(title, max_w)
-        if #title > max_w then -- Truncate the title if it exceeds the max width
-            return wezterm.truncate_right(title, max_w - 2)
-        end
-        local padding = math.floor((max_w - #title) / 2) -- Center the title by adding padding spaces
+    local padded = pad_title(title, max_width - 4)
+    local active = tab.is_active
 
-        return string.rep(' ', padding) .. title .. string.rep(' ', max_w - #title - padding)
-    end
-
-    local title = tab_title(tab)
-    local padded_title = pad_title(title, max_width - 4) -- Subtracting 4 for separators and index
-
-    -- Define background and foreground colors based on whether the tab is active or not
-    local foreground_active = '#78a9ff'
-    local background_active = '#161616'
-    local foreground_inactive = '#d0d0d0'
-    local background_inactive = '#262626'
-
-    -- Get the background color for the current tab index from the list
-    local background_index = tab.is_active and '#78a9ff' or '#705d99'
-
-    -- Return the formatted title with background, foreground, separators, and index
     return {
-        { Background = { Color = background_index } },
-        { Foreground = { Color = background_inactive } },
+        { Background = { Color = active and tab_colors.idx_active or tab_colors.idx_inactive } },
+        { Foreground = { Color = tab_colors.bg_inactive } },
         { Text = ' ' .. tab.tab_index + 1 .. ' ' },
-        { Background = { Color = tab.is_active and background_active or background_inactive } },
-        { Foreground = { Color = tab.is_active and foreground_active or foreground_inactive } },
-        { Text = padded_title },
+        { Background = { Color = active and tab_colors.bg_active or tab_colors.bg_inactive } },
+        { Foreground = { Color = active and tab_colors.fg_active or tab_colors.fg_inactive } },
+        { Text = padded },
     }
 end)
 
