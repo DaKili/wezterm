@@ -1,5 +1,3 @@
--- TODO: function to set status indicating zoomed state
-
 local wezterm = require('wezterm')
 
 local config = wezterm.config_builder()
@@ -16,9 +14,11 @@ config.use_fancy_tab_bar = false
 config.tab_max_width = 30
 config.inactive_pane_hsb = { saturation = 0.75, brightness = 0.7 }
 
--- Handle shell application to start
-if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
-    -- Check if PowerShell 7+ is installed, otherwise fallback to Windows PowerShell
+local is_windows = wezterm.target_triple == 'x86_64-pc-windows-msvc'
+local is_linux = wezterm.target_triple == 'x86_64-unknown-linux-gnu'
+
+-- Shell
+if is_windows then
     local pwsh_path = 'C:\\Program Files\\PowerShell\\7\\pwsh.exe'
     local success, result = pcall(function()
         return wezterm.run_child_process({ pwsh_path, '-NoLogo', '-Command', 'exit' })
@@ -29,13 +29,13 @@ if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
     else
         config.default_prog = { 'powershell.exe', '-NoLogo' }
     end
-elseif wezterm.target_triple == 'x86_64-unknown-linux-gnu' then
+elseif is_linux then
     config.default_prog = { '/usr/bin/bash', '--login' }
 end
 
 -- Startup
-wezterm.on('gui-startup', function(window)
-    local tab, pane, window = wezterm.mux.spawn_window(cmd or {})
+wezterm.on('gui-startup', function(_)
+    local _, _, window = wezterm.mux.spawn_window({})
     local gui_window = window:gui_window()
     gui_window:maximize()
 end)
@@ -82,41 +82,20 @@ config.keys = {
 
     -- Disable Keybinds
     { key = 'N', mods = 'CTRL', action = wezterm.action.DisableDefaultAssignment },
-    {
-        key = 'p',
-        mods = 'ALT',
-        action = wezterm.action_callback(function(window, pane)
-            project_layouts.vf8(window, pane)
-        end),
-    },
 }
 
 local function is_app_title(title)
-    return #title > 0 and not title:find('^%a:\\')
+    return #title > 0
+        and not title:find('^%a:\\')    -- C:\...
+        and not title:find('^/')        -- /home/...
+        and not title:find('^~')        -- ~/...
+        and not title:find('^%S+@%S+:') -- user@host:...
 end
 
-local function get_cwd_basename(pane)
-    local cwd_url = pane.current_working_dir
-    if not cwd_url then
-        return nil
-    end
-
-    local cwd = cwd_url.file_path or tostring(cwd_url)
-    cwd = cwd:gsub('[/\\]+$', '')
-    local basename = cwd:match('[/\\]([^/\\]+)$') or cwd
-    if basename and #basename > 0 then
-        return basename
-    end
-    return nil
-end
-
-local function has_claude(tab_info)
-    for _, pane_info in ipairs(tab_info.panes) do
-        if ((pane_info.title or ''):lower()):find('claude') then
-            return true
-        end
-    end
-    return false
+local function path_basename(str)
+    local path = str:match('@[^:]+:(.+)$') or str
+    path = path:gsub('[/\\]+$', '')
+    return path:match('[/\\]([^/\\]+)$') or path
 end
 
 local function resolve_tab_title(tab_info)
@@ -128,12 +107,14 @@ local function resolve_tab_title(tab_info)
 
     -- then app title
     local pane_title = tab_info.active_pane.title or ''
-    if is_app_title(pane_title) and not pane_title:lower():find('claude') then
+    if is_app_title(pane_title) then
         return pane_title, false
     end
 
-    -- then cwd basename
-    return get_cwd_basename(tab_info.active_pane) or pane_title, false
+    -- ten the cwd base name
+    local cwd_url = tab_info.active_pane.current_working_dir
+    local path = cwd_url and (cwd_url.file_path or tostring(cwd_url)) or pane_title
+    return path_basename(path), false
 end
 
 local function pad_title(title, max_w)
@@ -153,12 +134,8 @@ local tab_colors = {
     idx_inactive = '#705d99',
 }
 
-wezterm.on('format-tab-title', function(tab, tabs, panes, conf, hover, max_width)
-    local title, is_explicit = resolve_tab_title(tab)
-
-    if not is_explicit and has_claude(tab) then
-        title = 'C - ' .. title
-    end
+wezterm.on('format-tab-title', function(tab, _, _, _, _, max_width)
+    local title, _ = resolve_tab_title(tab)
 
     local padded = pad_title(title, max_width - 4)
     local active = tab.is_active
