@@ -11,7 +11,7 @@ config.color_scheme = 'Oxocarbon Dark'
 config.window_decorations = 'RESIZE|INTEGRATED_BUTTONS'
 config.window_padding = { left = 5, right = 5, top = 10, bottom = 0 }
 config.use_fancy_tab_bar = false
-config.tab_max_width = 30
+config.tab_max_width = 36
 config.inactive_pane_hsb = { saturation = 0.75, brightness = 0.7 }
 
 local is_windows = wezterm.target_triple == 'x86_64-pc-windows-msvc'
